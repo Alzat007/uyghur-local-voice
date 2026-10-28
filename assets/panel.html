@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>扎提维语 skill · 本地配音</title>
+<style>
+:root{color-scheme:light;--ink:#193c36;--muted:#60746e;--accent:#176a55;--line:#dce4dc;--paper:#f5f5ee}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}main{max-width:1120px;margin:auto;padding:48px 28px}header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:38px}.brand{font-size:12px;letter-spacing:.17em;color:var(--accent);font-weight:650}h1{font-size:34px;letter-spacing:-1px;margin:8px 0}h2{font-size:20px;margin:0 0 20px}p{margin:8px 0;color:var(--muted)}.pill{border:1px solid var(--line);border-radius:30px;padding:7px 13px;background:#fff;font-size:12px;white-space:nowrap}.grid{display:grid;grid-template-columns:1.5fr 1fr;gap:24px}.card{border:1px solid var(--line);background:#fffef9;border-radius:20px;padding:28px;box-shadow:0 8px 30px #173c3610}label{display:block;font-size:13px;font-weight:600;margin:18px 0 8px}select,textarea{width:100%;border:1px solid #cbd8ce;background:#fff;border-radius:10px;padding:12px;color:var(--ink);font:inherit}select:focus,textarea:focus{outline:2px solid #8cbb9c;outline-offset:2px}textarea{min-height:225px;resize:vertical;font:22px/1.95 "Geeza Pro","Noto Naskh Arabic",serif}.row{display:flex;justify-content:space-between;align-items:center;gap:12px}.subtle{font-size:12px;color:var(--muted)}.notice{background:#f1f4e9;border-radius:10px;padding:11px 13px;font-size:13px;color:#64714d;margin:12px 0}.button{border:0;border-radius:11px;padding:13px 22px;background:var(--accent);color:white;cursor:pointer;font:inherit;font-weight:600;display:inline-block;text-decoration:none}button:disabled{opacity:.45;cursor:wait}.generate{width:100%;margin-top:18px;font-size:16px}.status{min-height:27px;margin-top:14px;font-size:13px;color:var(--accent)}.error{color:#a6382a}.empty{padding:55px 10px;text-align:center;color:var(--muted)}.wave{font-size:40px;letter-spacing:6px;color:#abc7b5;margin-bottom:15px}audio{width:100%;margin:16px 0}.text{white-space:pre-wrap;overflow-wrap:anywhere;font:20px/1.9 "Geeza Pro",serif}.history{margin-top:30px}.history-item{padding:20px 0;border-bottom:1px solid var(--line)}.history-item:last-child{border:0}.history-item audio{margin:10px 0}.link{color:var(--accent);text-decoration:none;font-size:13px}.history-head{display:flex;align-items:center;justify-content:space-between}.light{background:none;color:var(--accent);border:1px solid var(--line);padding:6px 12px;font-size:12px}footer{margin:28px 0;color:var(--muted);font-size:12px}.hidden{display:none}@media(max-width:760px){main{padding:25px 16px}.grid{grid-template-columns:1fr}.card{padding:22px}h1{font-size:28px}header{align-items:flex-start}.pill{max-width:120px;white-space:normal}}
+</style>
+</head>
+<body><main>
+<header><div><div class="brand">ZHATI · UYGHUR VOICE</div><h1>扎提维语 skill</h1><p>写下维文，用保存的音色开口。</p></div><span class="pill" id="connection">正在连接本地服务</span></header>
+<div class="grid">
+<section class="card"><h2>创作配音</h2>
+<label for="voice">选择音色</label><select id="voice" aria-label="选择音色"></select>
+<div class="notice hidden" id="trial">当前为试用音色，参考文字使用已获准的机器稿。请试听确认发音与音色。</div>
+<label for="text">维语文案</label><textarea id="text" lang="ug" dir="rtl" maxlength="2000" spellcheck="false" placeholder="بۇ يەرگە ئۇيغۇرچە تېكىست كىرگۈزۈڭ..."></textarea>
+<div class="row subtle"><span>建议每段 1–3 句话，方便试听和调整</span><span id="count">0 / 2000</span></div>
+<button class="button generate" id="generate" disabled>生成配音</button>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+</section>
+<section class="card"><h2>本次试听</h2><div class="empty" id="empty"><div class="wave">▂▅▇▃▆▂</div>生成完成后，在这里试听和下载。<p class="subtle">首次加载需要一些时间</p></div>
+<div id="result" class="hidden"><p class="subtle" id="result-meta"></p><p class="text" dir="rtl" lang="ug" id="result-text"></p><audio controls id="player" preload="metadata"></audio><a class="button" id="download" download>下载 WAV</a><p class="subtle">适合导入剪辑软件继续制作视频</p></div></section>
+</div>
+<section class="card history"><div class="history-head"><h2>最近作品</h2><button class="button light" id="refresh">刷新</button></div><div id="history"><p>正在读取…</p></div></section>
+<footer>音频在本机生成并保存。关闭页面后，已提交的生成任务会继续运行。</footer>
+</main>
+<script nonce="__NONCE__">
+const $=id=>document.getElementById(id);let state=null,active=null,currentText='',timer=null;
+const stages={starting:'正在启动…',loading:'正在加载音色与模型…',generating:'正在生成维语配音…',saving:'正在保存音频…',done:'生成完成'};
+async function api(path,options){const r=await fetch(path,options);const value=await r.json();if(!r.ok)throw Error(value.error||'请求失败');return value;}
+function message(value,error=false){$('status').textContent=value;$('status').classList.toggle('error',error);}
+function update(){const item=state?.voices.find(v=>v.id===$('voice').value);$('trial').classList.toggle('hidden',!item?.trial);$('generate').disabled=!!active||!item?.ready||!$('text').value.trim();$('generate').textContent=active?'正在生成…':'生成配音';$('count').textContent=Array.from($('text').value).length+' / 2000';}
+async function history(){const entries=await api('/api/history');$('history').replaceChildren();if(!entries.length){const p=document.createElement('p');p.textContent='还没有作品，先生成一段试试。';$('history').append(p);return;}for(const item of entries){const card=document.createElement('div');card.className='history-item';const row=document.createElement('div');row.className='row';const name=document.createElement('span');name.className='subtle';name.textContent=item.voice_name+' · '+(item.duration_seconds?.toFixed(1)||'—')+' 秒';const link=document.createElement('a');link.className='link';link.href=item.url;link.download=item.name;link.textContent='下载 WAV';row.append(name,link);const text=document.createElement('div');text.className='text';text.dir='rtl';text.lang='ug';text.textContent=item.text;const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src=item.url;card.append(row,text,audio);$('history').append(card);}}
+async function poll(){try{const job=await api('/api/jobs/'+active);if(job.state==='running'){message(stages[job.stage]||'正在处理…');timer=setTimeout(poll,1500);return;}active=null;update();if(job.state==='error')throw Error(job.error);message('生成完成，可以试听了。');$('empty').classList.add('hidden');$('result').classList.remove('hidden');$('player').src=job.url;$('download').href=job.url;$('download').download=job.filename;$('result-meta').textContent=job.voice_name+' · '+job.duration_seconds.toFixed(1)+' 秒';$('result-text').textContent=job.text||currentText;await history();}catch(e){active=null;update();message(e.message,true);}}
+async function init(){try{state=await api('/api/status');$('voice').replaceChildren();for(const item of state.voices){const option=document.createElement('option');option.value=item.id;option.textContent=item.name;option.disabled=!item.ready;$('voice').append(option);}$('voice').value=state.default_voice||'';$('connection').textContent=state.ready?'● 本地服务已就绪':'本地环境待配置';if(!state.ready)message('请让 Codex 检查本地模型和保存的音色。',true);active=state.current_job;update();if(active)poll();await history();}catch(e){$('connection').textContent='本地服务未连接';message(e.message,true);}}
+$('text').addEventListener('input',update);$('voice').addEventListener('change',update);
+$('refresh').addEventListener('click',()=>history().catch(e=>message(e.message,true)));
+$('generate').addEventListener('click',async()=>{try{currentText=$('text').value.trim();active='submitting';update();message('正在提交…');const job=await api('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','X-Voice-Token':state.token},body:JSON.stringify({text:currentText,voice_id:$('voice').value})});active=job.id;poll();}catch(e){active=null;update();message(e.message,true);}});
+init();
+</script></body></html>
